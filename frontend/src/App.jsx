@@ -1,19 +1,26 @@
 import { createContext, useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import useAccountSwitcher from "./hooks/useAccountSwitcher";
-import Dashboard from "./components/Dashboard"; // Import the new Dashboard
+import Dashboard from "./components/Dashboard";
+import Deposit from "./components/Deposit";
+import ProposeTransaction from "./components/ProposeTransaction";
+import Transactions from "./components/Transactions";
 
 // Create WalletContext in App.jsx and export it
 export const WalletContext = createContext(null);
+
+// A wrapper to protect routes that require a connected wallet
+function PrivateRoute({ children, currentAccount }) {
+  return currentAccount ? children : <Navigate to="/" />;
+}
 
 function App() {
   const [provider, setProvider] = useState(null);
   const [privateKeyInput, setPrivateKeyInput] = useState("");
 
   useEffect(() => {
-    // Connect to the local Hardhat node
     const localProvider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
     setProvider(localProvider);
   }, []);
@@ -40,21 +47,26 @@ function App() {
             element={
               !currentAccount ? (
                 <div className="login-container">
-                  <h2>Connect with Private Key</h2>
-                  <input
-                    type="password"
-                    value={privateKeyInput}
-                    onChange={(e) => setPrivateKeyInput(e.target.value)}
-                    placeholder="Enter your private key"
-                  />
-                  <button onClick={handleConnect}>Connect Wallet</button>
-                  {accountError && <p className="error-message">{accountError}</p>}
+                    <div className="login-card">
+                        <h2>Connect with Private Key</h2>
+                        <input
+                            type="password"
+                            value={privateKeyInput}
+                            onChange={(e) => setPrivateKeyInput(e.target.value)}
+                            placeholder="Enter your private key"
+                        />
+                        <button onClick={handleConnect}>Connect Wallet</button>
+                        {accountError && <p className="error-message">{accountError}</p>}
+                    </div>
                 </div>
               ) : (
                 <Dashboard />
               )
             }
           />
+          <Route path="/deposit" element={<PrivateRoute currentAccount={currentAccount}><Deposit /></PrivateRoute>} />
+          <Route path="/propose" element={<PrivateRoute currentAccount={currentAccount}><ProposeTransaction /></PrivateRoute>} />
+          <Route path="/transactions" element={<PrivateRoute currentAccount={currentAccount}><Transactions /></PrivateRoute>} />
         </Routes>
       </Router>
     </WalletContext.Provider>
