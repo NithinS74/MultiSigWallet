@@ -5,6 +5,7 @@ import ABI from "../../../artifacts/contracts/multiSigWallet.sol/multiSigWallet.
 export default function useMultiSig(signer, contractAddress) {
   const [contract, setContract] = useState(null);
   const [error, setError] = useState(null);
+  const [provider, setProvider] = useState(null);
 
   // Load contract with current signer
   useEffect(() => {
@@ -12,6 +13,7 @@ export default function useMultiSig(signer, contractAddress) {
       try {
         const walletContract = new ethers.Contract(contractAddress, ABI.abi, signer);
         setContract(walletContract);
+        setProvider(signer.provider);
       } catch (err) {
         console.error("Contract connection failed:", err);
         setError("Failed to connect contract");
@@ -27,7 +29,7 @@ export default function useMultiSig(signer, contractAddress) {
       return tx.hash;
     } catch (err) {
       console.error("SubmitTransaction failed:", err);
-      setError("Failed to submit transaction");
+      throw err;
     }
   };
 
@@ -38,7 +40,7 @@ export default function useMultiSig(signer, contractAddress) {
       return tx.hash;
     } catch (err) {
       console.error("ConfirmTransaction failed:", err);
-      setError("Failed to confirm transaction");
+      throw err;
     }
   };
 
@@ -49,7 +51,7 @@ export default function useMultiSig(signer, contractAddress) {
       return tx.hash;
     } catch (err) {
       console.error("RevokeConfirmation failed:", err);
-      setError("Failed to revoke confirmation");
+      throw err;
     }
   };
 
@@ -60,7 +62,7 @@ export default function useMultiSig(signer, contractAddress) {
       return tx.hash;
     } catch (err) {
       console.error("ExecuteTransaction failed:", err);
-      setError("Failed to execute transaction");
+      throw err;
     }
   };
 
@@ -74,7 +76,7 @@ export default function useMultiSig(signer, contractAddress) {
       return tx.hash;
     } catch (err) {
       console.error("Deposit failed:", err);
-      setError("Failed to deposit Ether");
+      throw err;
     }
   };
 
@@ -104,44 +106,54 @@ export default function useMultiSig(signer, contractAddress) {
     }
   };
 
-  // **Updated** getOwners method based on the new contract
   const getOwners = async () => {
     try {
       const owners = await contract.getOwners();
-      return owners; // Make sure this returns an array of addresses
+      return owners;
     } catch (err) {
       console.error("GetOwners failed:", err);
       setError("Failed to get owners");
-      return []; // return an empty array if failed
+      return [];
     }
   };
 
-  // **Updated** getBalance method based on the new contract
   const getBalance = async () => {
     try {
       const balance = await contract.getBalance();
-      return ethers.formatEther(balance); // Format the balance to ETH
+      return ethers.formatEther(balance);
     } catch (err) {
       console.error("GetBalance failed:", err);
       setError("Failed to get balance");
-      return "0"; // Return zero if failed
+      return "0";
     }
   };
 
-  // Live Event Sync (Optional)
+  const getOwnerBalance = async (ownerAddress) => {
+    try {
+      const balance = await provider.getBalance(ownerAddress);
+      return ethers.formatEther(balance);
+    } catch (err) {
+      console.error(`GetBalance for ${ownerAddress} failed:`, err);
+      return "0";
+    }
+  };
+
+  // Live Event Sync
   const listenToEvents = (callback) => {
     if (!contract) return;
 
-    const handlers = [
-      contract.on("SubmitTransaction", callback),
-      contract.on("ConfirmTransaction", callback),
-      contract.on("ExecuteTransaction", callback),
-      contract.on("RevokeConfirmation", callback),
-      contract.on("Deposit", callback),
+    const eventNames = [
+      "SubmitTransaction",
+      "ConfirmTransaction",
+      "ExecuteTransaction",
+      "RevokeConfirmation",
+      "Deposit",
     ];
+    
+    eventNames.forEach(eventName => contract.on(eventName, callback));
 
     return () => {
-      handlers.forEach((off) => contract.off(off));
+      eventNames.forEach(eventName => contract.off(eventName, callback));
     };
   };
 
@@ -157,6 +169,7 @@ export default function useMultiSig(signer, contractAddress) {
     getTransactionCount,
     getOwners,
     getBalance,
+    getOwnerBalance,
     listenToEvents,
   };
 }

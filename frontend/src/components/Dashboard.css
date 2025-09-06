@@ -1,0 +1,90 @@
+.dashboard-container {
+  padding: var(--spacing-xl);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.dashboard-header p {
+  color: var(--text-light-color);
+  word-wrap: break-word;
+}
+
+.dashboard-main {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--spacing-xl);
+}
+
+.left-column, .right-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.wallet-info-card, .actions-card, .transactions-list-card {
+  background: var(--card-background-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  box-shadow: var(--box-shadow);
+}
+
+.wallet-info-card h3, .actions-card h3, .transactions-list-card h3 {
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing-md);
+}
+
+.owners-list ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.owners-list li {
+  font-size: 0.9rem;
+  word-wrap: break-word;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.owners-list li:last-child {
+  border-bottom: none;
+}
+
+.action-item {
+  margin-top: var(--spacing-lg);
+}
+
+.action-item h4 {
+  margin-bottom: var(--spacing-sm);
+}
+
+.action-item input {
+  margin-bottom: var(--spacing-sm);
+}
+
+.action-item button {
+  background-color: var(--primary-color);
+  color: white;
+  width: 100%;
+}
+
+.action-item button:hover {
+  background-color: var(--primary-hover-color);
+}
+
+.transactions-list-card {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+  

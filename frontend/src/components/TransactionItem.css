@@ -1,0 +1,73 @@
+.transaction-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  background: var(--card-background-color);
+  box-shadow: var(--box-shadow);
+  margin-bottom: var(--spacing-md);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.transaction-card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tx-id {
+  font-weight: 500;
+  color: var(--text-light-color);
+}
+
+.status-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 12px;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.card-body {
+  margin-bottom: var(--spacing-md);
+  font-size: 0.95rem;
+  word-wrap: break-word;
+}
+
+.card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.confirm-button, .revoke-button, .execute-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.confirm-button {
+  background: var(--success-color);
+}
+
+.revoke-button {
+  background: var(--error-color);
+}
+
+.execute-button {
+  background: var(--primary-color);
+}
+
+.confirm-button:hover, .revoke-button:hover, .execute-button:hover {
+  opacity: 0.9;
+}
+  
