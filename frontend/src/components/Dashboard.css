@@ -1,90 +1,299 @@
+/* Dashboard.css - Complete Overhaul */
+
 .dashboard-container {
-  padding: var(--spacing-xl);
-  max-width: 1200px;
+  padding: 40px 20px;
+  max-width: 1400px;
   margin: 0 auto;
+  font-family: 'Inter', sans-serif;
 }
 
+/* HEADER: Flexbox to split Title and Switcher */
 .dashboard-header {
-  text-align: center;
-  margin-bottom: var(--spacing-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  background: white;
+  padding: 20px 30px;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
-.dashboard-header h1 {
-  font-size: 2.5rem;
-  margin-bottom: var(--spacing-sm);
+.header-title h1 {
+  margin: 0 0 5px 0;
+  font-size: 2rem;
+  color: #2c3e50;
 }
 
-.dashboard-header p {
-  color: var(--text-light-color);
-  word-wrap: break-word;
+.contract-address {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 0.9rem;
 }
 
+.contract-address span {
+  font-family: monospace;
+  background: #f1f2f6;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #34495e;
+}
+
+.account-switcher-box {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: 1px solid #e0e6ed;
+}
+
+.account-switcher-box p {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #7f8c8d;
+}
+
+.account-switcher-box select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #dcdde1;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  background: white;
+  width: 200px;
+}
+
+/* MAIN LAYOUT: Strict 35% / 65% CSS Grid */
 .dashboard-main {
   display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: var(--spacing-xl);
+  grid-template-columns: 35% 1fr;
+  gap: 30px;
+  align-items: start;
 }
 
-.left-column, .right-column {
+.left-column {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xl);
+  gap: 25px;
 }
 
+/* REUSABLE CARD STYLES */
 .wallet-info-card, .actions-card, .transactions-list-card {
-  background: var(--card-background-color);
-  border-radius: var(--border-radius);
-  padding: var(--spacing-lg);
-  box-shadow: var(--box-shadow);
+  background: white;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f2f6;
 }
 
-.wallet-info-card h3, .actions-card h3, .transactions-list-card h3 {
-  margin-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: var(--spacing-md);
+h3 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+  border-bottom: 2px solid #f1f2f6;
+  padding-bottom: 15px;
 }
 
-.owners-list ul {
-  list-style-type: none;
-  padding-left: 0;
+/* TREASURY CARD */
+.treasury-card {
+  text-align: center;
+  background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+}
+
+.big-balance {
+  font-size: 3rem;
+  color: #2980b9;
+  margin: 10px 0 25px 0;
+}
+
+.eth-label {
+  font-size: 1.5rem;
+  color: #7f8c8d;
+}
+
+/* DEPOSIT FORM */
+.deposit-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.deposit-form input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+}
+
+.deposit-btn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.deposit-btn:hover:not(:disabled) {
+  background: #2ecc71;
+}
+
+/* OWNERS LIST */
+.owners-list {
+  list-style: none;
+  padding: 0;
   margin: 0;
 }
 
 .owners-list li {
-  font-size: 0.9rem;
-  word-wrap: break-word;
-  padding: var(--spacing-sm) 0;
-  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 15px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background: #f8f9fa;
+  border: 1px solid transparent;
 }
 
-.owners-list li:last-child {
-  border-bottom: none;
-}
-
-.action-item {
-  margin-top: var(--spacing-lg);
-}
-
-.action-item h4 {
-  margin-bottom: var(--spacing-sm);
-}
-
-.action-item input {
-  margin-bottom: var(--spacing-sm);
-}
-
-.action-item button {
-  background-color: var(--primary-color);
-  color: white;
+.owner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   width: 100%;
 }
 
-.action-item button:hover {
-  background-color: var(--primary-hover-color);
+.active-owner {
+  background-color: #ebf5fb !important;
+  border: 1px solid #3498db !important;
 }
 
-.transactions-list-card {
-  max-height: 85vh;
-  overflow-y: auto;
+.owner-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-  
+
+.owner-label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.active-badge {
+  background: #3498db;
+  color: white;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.owner-bal {
+  font-family: monospace;
+  color: #7f8c8d;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* ADDRESS ROW STYLES */
+.address-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e0e6ed;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.full-address {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #34495e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 10px;
+}
+
+.copy-btn {
+  background: #ecf0f1;
+  color: #2c3e50;
+  border: 1px solid #dcdde1;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  background: #dcdde1;
+}
+
+/* PROPOSE FORM */
+.action-item {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.action-item input {
+  padding: 12px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.propose-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.propose-btn:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* RIGHT COLUMN LEDGER */
+.transactions-list-card {
+  min-height: 600px;
+}
+
+.subtitle {
+  color: #7f8c8d;
+  margin-top: -15px;
+  margin-bottom: 25px;
+}
+
+.transaction-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.placeholder-ledger {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  border: 2px dashed #dcdde1;
+  border-radius: 12px;
+  color: #bdc3c7;
+  font-weight: 500;
+}

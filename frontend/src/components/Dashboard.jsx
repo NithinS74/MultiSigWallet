@@ -1,261 +1,228 @@
-import React, { useEffect, useState, useContext } from "react";
-import { WalletContext } from "../App";
-import useMultiSig from "../hooks/useMultiSig";
+import React, { useState, useEffect } from "react";
+import { useAccountSwitcher } from "../hooks/useAccountSwitcher";
+import { useMultiSig } from "../hooks/useMultiSig";
 import { CONTRACT_ADDRESS } from "../constants/contract";
-import { ethers } from "ethers";
 import TransactionItem from "./TransactionItem";
-import { Toaster, toast } from "react-hot-toast";
 import "./Dashboard.css";
 
 export default function Dashboard() {
-  const { signer, currentAccount, provider } = useContext(WalletContext);
-  const {
-    contract,
-    error,
-    getBalance,
-    getOwners,
-    getOwnerBalance,
-    submitTransaction,
-    depositEther,
-    listenToEvents,
-  } = useMultiSig(signer, CONTRACT_ADDRESS);
-
-  const [walletBalance, setWalletBalance] = useState("0");
-  const [owners, setOwners] = useState([]);
-  const [requiredConfirmations, setRequiredConfirmations] = useState(0);
+  const { activeAccount, switchAccount, burners } = useAccountSwitcher();
+  const { 
+    submitTx, 
+    confirmTx, 
+    executeTx, 
+    revokeTx, 
+    getBalance, 
+    depositETH, 
+    getTransactions 
+  } = useMultiSig(activeAccount);
+// Replace the single isLoading with two separate states
+const [isDepositing, setIsDepositing] = useState(false);
+const [isProposing, setIsProposing] = useState(false);
+  const [treasuryBalance, setTreasuryBalance] = useState("0.0");
+  const [burnerBalances, setBurnerBalances] = useState(["0", "0", "0"]);
   const [transactions, setTransactions] = useState([]);
+  
+  const [toAddress, setToAddress] = useState("");
+  const [amount, setAmount] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
-  const [txTo, setTxTo] = useState("");
-  const [txValue, setTxValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fetchAllData = async () => {
-    if (!contract) return;
-    try {
-      const [balance, ownersList, reqConfirmations, txCount] =
-        await Promise.all([
-          getBalance(),
-          getOwners(),
-          contract.noOfConfirmations(),
-          contract.getTransactionCount(),
-        ]);
+  // Fetch all balances and transactions
+  const fetchData = async () => {
+    if (!activeAccount) return;
+    
+    const tBal = await getBalance(CONTRACT_ADDRESS);
+    setTreasuryBalance(tBal);
 
-      setWalletBalance(balance);
-      setRequiredConfirmations(Number(reqConfirmations));
+    const b0 = await getBalance(burners[0].address);
+    const b1 = await getBalance(burners[1].address);
+    const b2 = await getBalance(burners[2].address);
+    setBurnerBalances([b0, b1, b2]);
 
-      const ownersWithBalances = await Promise.all(
-        ownersList.map(async (owner) => ({
-          address: owner,
-          balance: await getOwnerBalance(owner),
-        }))
-      );
-      setOwners(ownersWithBalances);
-
-      const txs = [];
-      for (let i = 0; i < txCount; i++) {
-        const tx = await contract.getTransaction(i);
-        const isConfirmed = await contract.isConfirmed(i, currentAccount);
-        txs.push({
-          index: i,
-          to: tx.to,
-          value: tx.value,
-          executed: tx.executed,
-          numConfirmations: Number(tx.numConfirmations),
-          isConfirmed,
-          confirmationsNeeded: Number(reqConfirmations),
-          canExecute:
-            !tx.executed &&
-            Number(tx.numConfirmations) >= Number(reqConfirmations),
-          owners: ownersList,
-        });
-      }
-      setTransactions(txs.reverse());
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      toast.error("Error fetching data");
-    }
+    const txs = await getTransactions(burners);
+    setTransactions(txs);
   };
 
   useEffect(() => {
-    if (contract && provider && currentAccount) {
-      fetchAllData();
-    }
-  }, [contract, provider, currentAccount]);
+    fetchData();
+  }, [activeAccount, burners]);
 
-  useEffect(() => {
-    if (contract) {
-      const unsubscribe = listenToEvents(() => {
-        toast.success("New event detected! Refreshing data...");
-        fetchAllData();
-      });
-      return () => unsubscribe();
-    }
-  }, [contract]);
-
-  const handleDeposit = async () => {
-    if (!depositAmount || isNaN(depositAmount) || Number(depositAmount) <= 0) {
-      toast.error("Please enter a valid deposit amount.");
-      return;
-    }
-    const toastId = toast.loading("Depositing...");
-    try {
-      await depositEther(depositAmount);
-      await fetchAllData();
+  const handleDeposit = async (e) => {
+    e.preventDefault();
+    if (!depositAmount) return;
+    setIsLoading(true);
+    const success = await depositETH(depositAmount);
+    if (success) {
       setDepositAmount("");
-      toast.success("Deposit successful", { id: toastId });
-    } catch (error) {
-      console.error(error);
-      toast.error("Deposit failed", { id: toastId });
+      fetchData(); // Refresh UI immediately
+      alert("Successfully deposited ETH into Treasury!");
     }
+    setIsLoading(false);
   };
 
-  const handleSubmitTx = async () => {
-    if (!txTo || !txValue) {
-      toast.error("Please fill all fields");
-      return;
+  const handlePropose = async (e) => {
+    e.preventDefault();
+    if (!toAddress || !amount) return;
+    setIsLoading(true);
+    const success = await submitTx(toAddress, amount);
+    if (success) {
+      setToAddress("");
+      setAmount("");
+      fetchData(); // Refresh UI immediately
+      alert("Transaction Proposed Successfully!");
     }
-    if (isNaN(txValue) || Number(txValue) <= 0) {
-      toast.error("Please enter a valid ETH amount");
-      return;
-    }
-    const toastId = toast.loading("Submitting transaction...");
-    try {
-      await submitTransaction(txTo, txValue);
-      setTxTo("");
-      setTxValue("");
-      toast.success("Transaction submitted", { id: toastId });
-    } catch (error) {
-      console.error("Submission failed:", error);
-      toast.error(`Submission failed: ${error.reason || error.message}`, {
-        id: toastId,
-      });
-    }
+    setIsLoading(false);
   };
 
-  const handleConfirm = async (index) => {
-    const toastId = toast.loading("Confirming...");
-    try {
-      const tx = await contract.confirmTransaction(index);
-      await tx.wait();
-      toast.success("Transaction confirmed", { id: toastId });
-      fetchAllData();
-    } catch (err) {
-      console.error("Confirm failed:", err);
-      toast.error(`Confirmation failed: ${err.reason || err.message}`, {
-        id: toastId,
-      });
-    }
+  // Transaction action wrappers
+  const handleConfirm = async (txIndex) => {
+    setIsLoading(true);
+    const success = await confirmTx(txIndex);
+    if (success) fetchData();
+    setIsLoading(false);
   };
 
-  const handleRevoke = async (index) => {
-    const toastId = toast.loading("Revoking...");
-    try {
-      const tx = await contract.revokeConfirmation(index);
-      await tx.wait();
-      toast.success("Confirmation revoked", { id: toastId });
-      fetchAllData();
-    } catch (err) {
-      console.error("Revoke failed:", err);
-      toast.error(`Revoke failed: ${err.reason || err.message}`, {
-        id: toastId,
-      });
-    }
+  const handleExecute = async (txIndex) => {
+    setIsLoading(true);
+    const success = await executeTx(txIndex);
+    if (success) fetchData();
+    setIsLoading(false);
   };
 
-  const handleExecute = async (index) => {
-    const toastId = toast.loading("Executing...");
-    try {
-      const tx = await contract.executeTransaction(index);
-      await tx.wait();
-      toast.success("Transaction executed", { id: toastId });
-      fetchAllData();
-    } catch (err) {
-      console.error("Execute failed:", err);
-      toast.error(`Execution failed: ${err.reason || err.message}`, {
-        id: toastId,
-      });
-    }
+  const handleRevoke = async (txIndex) => {
+    setIsLoading(true);
+    const success = await revokeTx(txIndex);
+    if (success) fetchData();
+    setIsLoading(false);
   };
 
   return (
     <div className="dashboard-container">
-      <Toaster position="top-center" reverseOrder={false} />
-      <header className="dashboard-header">
-        <h1>Multi-Sig Wallet Dashboard</h1>
-        <p>
-          Connected as: <strong>{currentAccount}</strong>
-        </p>
-      </header>
+      <div className="dashboard-header">
+        <div className="header-title">
+          <h1>MultiSig Treasury</h1>
+          <p className="contract-address">Contract: <span>{CONTRACT_ADDRESS}</span></p>
+        </div>
+        <div className="account-switcher-box">
+          <p>👤 Acting as:</p>
+          <select 
+            value={burners.findIndex(b => b.address === activeAccount.address)}
+            onChange={(e) => switchAccount(Number(e.target.value))}
+          >
+            <option value={0}>Owner 1 ({burners[0].address.slice(0,6)}...)</option>
+            <option value={1}>Owner 2 ({burners[1].address.slice(0,6)}...)</option>
+            <option value={2}>Owner 3 ({burners[2].address.slice(0,6)}...)</option>
+          </select>
+        </div>
+      </div>
 
       <div className="dashboard-main">
+        {/* LEFT COLUMN: 35% Width */}
         <div className="left-column">
+          
+          <div className="wallet-info-card treasury-card">
+            <h3>Treasury Balance</h3>
+            <h2 className="big-balance">{parseFloat(treasuryBalance).toFixed(4)} <span className="eth-label">ETH</span></h2>
+            
+            {/* DEPOSIT UI */}
+            <form onSubmit={handleDeposit} className="deposit-form">
+              <input 
+                type="number" 
+                step="0.0001"
+                placeholder="Amount to deposit" 
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                disabled={isLoading}
+              />
+              <button type="submit" className="deposit-btn" disabled={isLoading}>
+                {isLoading ? "Mining..." : "Deposit"}
+              </button>
+            </form>
+          </div>
+
           <div className="wallet-info-card">
-            <h3>Wallet Info</h3>
-            <p>
-              <strong>Balance:</strong> {walletBalance} ETH
-            </p>
-            <p>
-              <strong>Required Confirmations:</strong> {requiredConfirmations}
-            </p>
-            <div className="owners-list">
-              <strong>Owners:</strong>
-              <ul>
-                {owners.map((owner) => (
-                  <li key={owner.address}>
-                    {owner.address} ({owner.balance} ETH)
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <h3>Signer Balances</h3>
+            <ul className="owners-list">
+              {burners.map((burner, index) => (
+                <li key={index} className={activeAccount.address === burner.address ? "active-owner" : ""}>
+                  <div className="owner-header">
+                    <div className="owner-meta">
+                      <span className="owner-label">Owner {index + 1}</span>
+                      {activeAccount.address === burner.address && <span className="active-badge">Active</span>}
+                    </div>
+                    <span className="owner-bal">{parseFloat(burnerBalances[index]).toFixed(4)} ETH</span>
+                  </div>
+                  
+                  {/* Copyable Address Section */}
+                  <div className="address-row">
+                    <code className="full-address">{burner.address}</code>
+                    <button 
+                      className="copy-btn" 
+                      onClick={() => {
+                        navigator.clipboard.writeText(burner.address);
+                      }}
+                      title="Copy Address"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="actions-card">
-            <h3>Actions</h3>
-            <div className="action-item">
-              <h4>Deposit Ether</h4>
-              <input
-                type="text"
-                placeholder="Amount in ETH"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-              />
-              <button onClick={handleDeposit}>Deposit</button>
-            </div>
-            <div className="action-item">
-              <h4>Submit Transaction</h4>
-              <input
-                type="text"
-                placeholder="Recipient Address"
-                value={txTo}
-                onChange={(e) => setTxTo(e.target.value)}
-              />
-              <input
-                type="text"
-                placeholder="Amount in ETH"
-                value={txValue}
-                onChange={(e) => setTxValue(e.target.value)}
-              />
-              <button onClick={handleSubmitTx}>Submit</button>
-            </div>
+             <h3>Propose Transaction</h3>
+             <form onSubmit={handlePropose} className="action-item">
+                <input 
+                  type="text" 
+                  placeholder="Recipient Address (Paste here...)" 
+                  value={toAddress}
+                  onChange={(e) => setToAddress(e.target.value)}
+                  disabled={isLoading}
+                />
+                <input 
+                  type="number" 
+                  step="0.0001"
+                  placeholder="Amount (ETH)" 
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  disabled={isLoading}
+                />
+                <button type="submit" className="propose-btn" disabled={isLoading}>
+                  {isLoading ? "Mining on Sepolia..." : "Propose Tx"}
+                </button>
+             </form>
           </div>
         </div>
-
+        
+        {/* RIGHT COLUMN: 65% Width */}
         <div className="right-column">
           <div className="transactions-list-card">
-            <h3>Transactions</h3>
+            <h3>Transaction Ledger</h3>
+            <p className="subtitle">Watch the consensus happen in real-time.</p>
+            
+            {/* Render the actual transactions */}
             {transactions.length === 0 ? (
-              <p>No transactions found</p>
+              <div className="placeholder-ledger">
+                 <p>No transactions found on the network.</p>
+              </div>
             ) : (
-              transactions.map((tx) => (
-                <TransactionItem
-                  key={tx.index}
-                  tx={tx}
-                  handleConfirm={handleConfirm}
-                  handleRevoke={handleRevoke}
-                  handleExecute={handleExecute}
-                  currentAccount={currentAccount}
-                />
-              ))
+              <div className="transaction-feed">
+                {transactions.map((tx) => (
+                  <TransactionItem 
+                    key={tx.index} 
+                    tx={tx} 
+                    currentAccount={activeAccount.address}
+                    handleConfirm={handleConfirm}
+                    handleExecute={handleExecute}
+                    handleRevoke={handleRevoke}
+                  />
+                ))}
+              </div>
             )}
+            
           </div>
         </div>
       </div>

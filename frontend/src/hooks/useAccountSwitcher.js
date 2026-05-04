@@ -1,29 +1,24 @@
-// src/hooks/useAccountSwitcher.js
-import { useState } from "react";
-import { ethers } from "ethers";
-import { CONTRACT_ADDRESS } from "../constants/contract";
+import { useState, useMemo } from 'react';
+import { ethers } from 'ethers';
 
-export default function useAccountSwitcher() {
-  const [signer, setSigner] = useState(null);
-  const [currentAccount, setCurrentAccount] = useState(null);
-  const [error, setError] = useState(null);
+// 1. Move the provider OUTSIDE the hook. 
+// It only gets created once per page load now.
+const provider = new ethers.providers.JsonRpcProvider(import.meta.env.VITE_SEPOLIA_RPC_URL);
 
-  const connectWithPrivateKey = (privKey, provider) => {
-    try {
-      const wallet = new ethers.Wallet(privKey, provider);
-      setSigner(wallet);
-      setCurrentAccount(wallet.address);
-      console.log("Connected to contract at:", CONTRACT_ADDRESS);
-    } catch (err) {
-      console.error("Error connecting with private key:", err);
-      setError("Failed to connect with private key");
-    }
+export const useAccountSwitcher = () => {
+  
+  // 2. Empty dependency array means this array is only built once!
+  const burners = useMemo(() => [
+    new ethers.Wallet(import.meta.env.VITE_BURNER_KEY_1, provider),
+    new ethers.Wallet(import.meta.env.VITE_BURNER_KEY_2, provider),
+    new ethers.Wallet(import.meta.env.VITE_BURNER_KEY_3, provider)
+  ], []);
+
+  const [activeAccount, setActiveAccount] = useState(burners[0]);
+
+  const switchAccount = (index) => {
+    setActiveAccount(burners[index]);
   };
 
-  return {
-    currentAccount,
-    signer,
-    error,
-    connectWithPrivateKey,
-  };
-}
+  return { activeAccount, switchAccount, burners };
+};

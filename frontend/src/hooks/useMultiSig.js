@@ -1,175 +1,137 @@
-import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import ABI from "../../../artifacts/contracts/multiSigWallet.sol/multiSigWallet.json"; // adjust path if needed
+import { ethers } from 'ethers';
+import { CONTRACT_ADDRESS } from '../constants/contract';
+import multiSigAbi from '../multiSigWallet.json'; 
 
-export default function useMultiSig(signer, contractAddress) {
-  const [contract, setContract] = useState(null);
-  const [error, setError] = useState(null);
-  const [provider, setProvider] = useState(null);
+export const useMultiSig = (activeAccount) => {
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, multiSigAbi.abi, activeAccount);
 
-  // Load contract with current signer
-  useEffect(() => {
-    if (signer && contractAddress) {
-      try {
-        const walletContract = new ethers.Contract(contractAddress, ABI.abi, signer);
-        setContract(walletContract);
-        setProvider(signer.provider);
-      } catch (err) {
-        console.error("Contract connection failed:", err);
-        setError("Failed to connect contract");
-      }
-    }
-  }, [signer, contractAddress]);
-
-  // Transaction Actions
-  const submitTransaction = async (to, value) => {
+  // 1. DEPOSIT
+  const depositETH = async (amountInEth) => {
     try {
-      const tx = await contract.submitTransaction(to, ethers.parseEther(value));
+      const tx = await contract.deposit({
+        value: ethers.utils.parseEther(amountInEth)
+      });
+      console.log("Depositing ETH... waiting for block");
       await tx.wait();
-      return tx.hash;
-    } catch (err) {
-      console.error("SubmitTransaction failed:", err);
-      throw err;
+      return true;
+    } catch (error) {
+      console.error("Deposit failed:", error);
+      return false;
     }
   };
 
-  const confirmTransaction = async (txIndex) => {
+  // 2. SUBMIT
+  const submitTx = async (to, value) => {
+    try {
+      const valueInWei = ethers.utils.parseEther(value);
+      const tx = await contract.submitTransaction(to, valueInWei);
+      console.log("Transaction proposed! Waiting...");
+      await tx.wait(); 
+      return true;
+    } catch (error) {
+      console.error("Submit failed:", error);
+      return false;
+    }
+  };
+
+  // 3. CONFIRM
+  const confirmTx = async (txIndex) => {
     try {
       const tx = await contract.confirmTransaction(txIndex);
       await tx.wait();
-      return tx.hash;
-    } catch (err) {
-      console.error("ConfirmTransaction failed:", err);
-      throw err;
+      return true;
+    } catch (error) {
+      console.error("Confirm failed:", error);
+      return false;
     }
   };
 
-  const revokeConfirmation = async (txIndex) => {
-    try {
-      const tx = await contract.revokeConfirmation(txIndex);
-      await tx.wait();
-      return tx.hash;
-    } catch (err) {
-      console.error("RevokeConfirmation failed:", err);
-      throw err;
-    }
-  };
-
-  const executeTransaction = async (txIndex) => {
+  // 4. EXECUTE
+  const executeTx = async (txIndex) => {
     try {
       const tx = await contract.executeTransaction(txIndex);
       await tx.wait();
-      return tx.hash;
-    } catch (err) {
-      console.error("ExecuteTransaction failed:", err);
-      throw err;
+      return true;
+    } catch (error) {
+      console.error("Execute failed:", error);
+      return false;
     }
   };
 
-  const depositEther = async (amount) => {
+  // 5. REVOKE
+  const revokeTx = async (txIndex) => {
     try {
-      const tx = await signer.sendTransaction({
-        to: contractAddress,
-        value: ethers.parseEther(amount),
-      });
+      const tx = await contract.revokeConfirmation(txIndex);
       await tx.wait();
-      return tx.hash;
-    } catch (err) {
-      console.error("Deposit failed:", err);
-      throw err;
+      return true;
+    } catch (error) {
+      console.error("Revoke failed:", error);
+      return false;
     }
   };
 
-  // Getters
-  const getTransaction = async (txIndex) => {
+  // 6. FETCH LEDGER
+  const getTransactions = async (burnersArray) => {
     try {
-      const tx = await contract.getTransaction(txIndex);
-      return {
-        to: tx[0],
-        value: ethers.formatEther(tx[1]),
-        executed: tx[2],
-        numConfirmations: Number(tx[3]),
-      };
-    } catch (err) {
-      console.error("GetTransaction failed:", err);
-      setError("Failed to get transaction");
-    }
-  };
+      const txCount = await contract.getTransactionCount();
+      const count = txCount.toNumber(); 
+      
+      let fetchedTxs = [];
+      
+      for (let i = 0; i < count; i++) {
+        const tx = await contract.transactions(i);
+        
+        // This is where the rogue tag was! It's clean now.
+        const isConfirmed = await contract.isConfirmed(i, activeAccount.address);
+        
+        const confirmationsNeeded = await contract.noOfConfirmations();
 
-  const getTransactionCount = async () => {
-    try {
-      const count = await contract.getTransactionCount();
-      return Number(count);
-    } catch (err) {
-      console.error("GetTransactionCount failed:", err);
-      setError("Failed to get transaction count");
-    }
-  };
-
-  const getOwners = async () => {
-    try {
-      const owners = await contract.getOwners();
-      return owners;
-    } catch (err) {
-      console.error("GetOwners failed:", err);
-      setError("Failed to get owners");
+        fetchedTxs.push({
+          index: i,
+          to: tx.to,
+          value: tx.value, // Keep as BigNumber (Wei) for the UI to format
+          executed: tx.executed,
+          numConfirmations: tx.numConfirmations.toNumber(),
+          confirmationsNeeded: confirmationsNeeded.toNumber(),
+          isConfirmed: isConfirmed,
+          canExecute: tx.numConfirmations.toNumber() >= confirmationsNeeded.toNumber() && !tx.executed,
+          owners: burnersArray.map(b => b.address) 
+        });
+      }
+      
+      return fetchedTxs.reverse(); 
+      
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
       return [];
     }
   };
 
-  const getBalance = async () => {
+  // 7. GET OWNERS
+  const fetchContractOwners = async () => {
     try {
-      const balance = await contract.getBalance();
-      return ethers.formatEther(balance);
-    } catch (err) {
-      console.error("GetBalance failed:", err);
-      setError("Failed to get balance");
-      return "0";
+      return await contract.getOwners();
+    } catch (error) {
+      console.error("Failed to fetch owners:", error);
+      return [];
     }
   };
 
-  const getOwnerBalance = async (ownerAddress) => {
-    try {
-      const balance = await provider.getBalance(ownerAddress);
-      return ethers.formatEther(balance);
-    } catch (err) {
-      console.error(`GetBalance for ${ownerAddress} failed:`, err);
-      return "0";
-    }
+  // 8. BALANCES
+  const getBalance = async (address) => {
+    const balance = await activeAccount.provider.getBalance(address);
+    return ethers.utils.formatEther(balance);
   };
 
-  // Live Event Sync
-  const listenToEvents = (callback) => {
-    if (!contract) return;
-
-    const eventNames = [
-      "SubmitTransaction",
-      "ConfirmTransaction",
-      "ExecuteTransaction",
-      "RevokeConfirmation",
-      "Deposit",
-    ];
-    
-    eventNames.forEach(eventName => contract.on(eventName, callback));
-
-    return () => {
-      eventNames.forEach(eventName => contract.off(eventName, callback));
-    };
+  return { 
+    contract, 
+    submitTx, 
+    confirmTx, 
+    executeTx, 
+    revokeTx, 
+    getBalance, 
+    depositETH, 
+    getTransactions,
+    fetchContractOwners 
   };
-
-  return {
-    contract,
-    error,
-    submitTransaction,
-    confirmTransaction,
-    revokeConfirmation,
-    executeTransaction,
-    depositEther,
-    getTransaction,
-    getTransactionCount,
-    getOwners,
-    getBalance,
-    getOwnerBalance,
-    listenToEvents,
-  };
-}
+};
