@@ -1,10 +1,12 @@
-require("@nomiclabs/hardhat-ethers");
-/** @type import('hardhat/config').HardhatUserConfig */
+require("@nomiclabs/hardhat-ethers"); // Updated from hardhat-toolbox
+require("dotenv").config();
+
 module.exports = {
+  solidity: "0.8.26", // Updated to match the solc version in your lockfile
   networks: {
-    localhost: {
-      url: "http://127.0.0.1:8545",
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL,
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY] // Ensure these match your .env variables
     }
-  },
-  solidity: "0.8.20",
+  }
 };
