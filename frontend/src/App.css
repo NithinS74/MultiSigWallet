@@ -4,41 +4,12 @@
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background-color: var(--background-color);
-  font-family: var(--font-family);
+  background: var(--bg);
 }
 
-.connect-card {
-  background-color: var(--card-background-color);
-  padding: var(--spacing-xl);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  text-align: center;
-  width: 100%;
-  max-width: 400px;
-}
-
-.connect-card h2 {
-  margin-bottom: var(--spacing-lg);
-  color: var(--text-color);
-}
-
-.connect-card input {
-  margin-bottom: var(--spacing-md);
-  text-align: center;
-}
-
-.connect-card button {
-  width: 100%;
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.connect-card button:hover {
-  background-color: var(--primary-hover-color);
-}
-
-.connect-error {
-  color: var(--error-color);
-  margin-top: var(--spacing-md);
+.connect-container h2 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0;
 }
