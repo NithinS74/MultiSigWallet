@@ -6,6 +6,12 @@ import { CONTRACT_ADDRESS } from "../constants/contract";
 import qrCodeSvg from "../assets/static-qr-code-b2abbfcd28f8f7134b99fc915e65580e.svg";
 import "./Dashboard.css";
 
+import owner1Img from "../assets/linkedin-sales-solutions-pAtA8xe_iVM-unsplash.jpg";
+import owner2Img from "../assets/stefan-stefancik-QXevDflbl8A-unsplash.jpg";
+import owner3Img from "../assets/christian-buehner-DItYlc26zVI-unsplash.jpg";
+
+const ownerImages = [owner1Img, owner2Img, owner3Img];
+
 /* ─── Micro SVG Icons ───────────────────────────────────────── */
 const Icon = {
   overview:  () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
@@ -134,8 +140,12 @@ function OverviewPage({ activeAccount, burners, burnerBalances, treasuryBalance,
               const isActive = b.address === activeAccount.address;
               return (
                 <div key={i} className={`signer-row${isActive ? " signer-row--active" : ""}`}>
-                  <div className="signer-avatar" style={{background: isActive ? "var(--blue)" : `hsl(${i*80},40%,82%)`}}>
-                    {isActive ? ownerNames[i][0] : ownerNames[i][0]}
+                  <div className="signer-avatar" style={{ position: "relative" }}>
+                    <img
+                      src={ownerImages[i]}
+                      alt={ownerNames[i]}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                    />
                     <span className={`signer-dot ${isActive ? "signer-dot--active" : ""}`} />
                   </div>
                   <div className="signer-info">
@@ -366,10 +376,12 @@ function OwnersPage({ burners, burnerBalances, activeAccount, onSwitch }) {
           const isActive = b.address === activeAccount.address;
           return (
             <div key={i} className={`owner-card-row${isActive ? " owner-card-row--active" : ""}`}>
-              <div className="owner-card-row__avatar" style={{background: isActive ? "var(--blue)" : `hsl(${i*80+200},50%,85%)`}}>
-                <span style={{color: isActive ? "#fff" : `hsl(${i*80+200},50%,35%)`, fontWeight:700}}>
-                  {ownerNames[i][0]}{i+1}
-                </span>
+              <div className="owner-card-row__avatar">
+                <img
+                  src={ownerImages[i]}
+                  alt={ownerNames[i]}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                />
               </div>
               <div className="owner-card-row__info">
                 <div className="owner-card-row__name">
@@ -506,8 +518,8 @@ export default function Dashboard() {
         <div className="sidebar__brand">
           <div className="sidebar__logo"><Icon.wallet /></div>
           <div>
-            <div className="sidebar__name">Main Treasury</div>
-            <div className="sidebar__sub">Active MultiSig</div>
+            <div className="sidebar__name">MultiFlux</div>
+            <div className="sidebar__sub">Active Multi-Signature</div>
           </div>
         </div>
 
