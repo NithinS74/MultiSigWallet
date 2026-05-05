@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { useAccountSwitcher } from "../hooks/useAccountSwitcher";
 import { useMultiSig } from "../hooks/useMultiSig";
 import { CONTRACT_ADDRESS } from "../constants/contract";
+import qrCodeSvg from "../assets/static-qr-code-b2abbfcd28f8f7134b99fc915e65580e.svg";
 import "./Dashboard.css";
 
 /* ─── Micro SVG Icons ───────────────────────────────────────── */
@@ -64,7 +65,7 @@ function useActionState(duration = 2200) {
 }
 
 /* ─── OverviewPage ──────────────────────────────────────────── */
-function OverviewPage({ activeAccount, burners, burnerBalances, treasuryBalance, onFetch, onOpenNew, multiSig }) {
+function OverviewPage({ activeAccount, burners, burnerBalances, treasuryBalance, onFetch, onOpenNew, onReview, multiSig }) {
   const { depositETH } = multiSig;
   const [depositAmount, setDepositAmount] = useState("");
   const [depLoading, depSuccess, runDeposit] = useActionState();
@@ -106,10 +107,7 @@ function OverviewPage({ activeAccount, burners, burnerBalances, treasuryBalance,
             <CopyButton text={CONTRACT_ADDRESS} compact />
           </div>
           <div className="deposit-card__qr">
-            <div className="qr-placeholder">
-              <Icon.wallet />
-              <span>Wallet Address</span>
-            </div>
+            <img src={qrCodeSvg} alt="Wallet QR Code" style={{ width: '140px', height: '140px', borderRadius: 'var(--r-xl)' }} />
           </div>
           <form onSubmit={handleDeposit} className="deposit-card__form">
             <input type="number" step="0.0001" placeholder="Amount in ETH" value={depositAmount}
@@ -124,7 +122,7 @@ function OverviewPage({ activeAccount, burners, burnerBalances, treasuryBalance,
 
       {/* Grid: Propose + Signers */}
       <section className="mid-grid">
-        <ProposeCard multiSig={multiSig} onFetch={onFetch} disabled={depLoading} />
+        <ProposeCard onReview={onReview} disabled={depLoading} />
 
         <div className="card signers-card">
           <div className="card__header">
@@ -156,20 +154,14 @@ function OverviewPage({ activeAccount, burners, burnerBalances, treasuryBalance,
 }
 
 /* ─── ProposeCard ───────────────────────────────────────────── */
-function ProposeCard({ multiSig, onFetch, disabled }) {
-  const { submitTx } = multiSig;
+function ProposeCard({ onReview, disabled }) {
   const [to, setTo] = useState("");
   const [amt, setAmt] = useState("");
-  const [loading, success, run] = useActionState();
 
   const handle = (e) => {
     e.preventDefault();
     if (!to || !amt) return;
-    run(async () => {
-      const ok = await submitTx(to, amt);
-      if (ok) { setTo(""); setAmt(""); onFetch(); }
-      return ok;
-    });
+    onReview(to, amt);
   };
 
   return (
@@ -180,16 +172,16 @@ function ProposeCard({ multiSig, onFetch, disabled }) {
       <form onSubmit={handle} className="propose-form">
         <div className="form-group">
           <label className="form-label">Recipient Address</label>
-          <input type="text" placeholder="0x..." value={to} onChange={e => setTo(e.target.value)} disabled={loading || disabled} />
+          <input type="text" placeholder="0x..." value={to} onChange={e => setTo(e.target.value)} disabled={disabled} />
         </div>
         <div className="form-group">
           <label className="form-label">Amount (ETH)</label>
-          <input type="number" step="0.0001" placeholder="0.00" value={amt} onChange={e => setAmt(e.target.value)} disabled={loading || disabled} />
+          <input type="number" step="0.0001" placeholder="0.00" value={amt} onChange={e => setAmt(e.target.value)} disabled={disabled} />
         </div>
-        <Btn type="submit" className="btn-dark btn-block" loading={loading} success={success}
-          loadingLabel="Broadcasting…" successLabel="Proposed!">
+        <button type="submit" className="btn-dark btn-block" disabled={disabled || !to || !amt}
+          style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"12px 20px",borderRadius:"var(--r-full)"}}>
           Review Proposal <Icon.chevronR />
-        </Btn>
+        </button>
       </form>
     </div>
   );
@@ -383,10 +375,10 @@ function OwnersPage({ burners, burnerBalances, activeAccount, onSwitch }) {
 }
 
 /* ─── NewTxModal ────────────────────────────────────────────── */
-function NewTxModal({ onClose, multiSig, onFetch }) {
+function NewTxModal({ onClose, multiSig, onFetch, prefillTo = "", prefillAmt = "" }) {
   const { submitTx } = multiSig;
-  const [to, setTo] = useState("");
-  const [amt, setAmt] = useState("");
+  const [to, setTo] = useState(prefillTo);
+  const [amt, setAmt] = useState(prefillAmt);
   const [loading, success, run] = useActionState(1800);
 
   const handle = (e) => {
@@ -441,6 +433,7 @@ export default function Dashboard() {
 
   const [page, setPage] = useState("overview");
   const [showModal, setShowModal] = useState(false);
+  const [modalPrefill, setModalPrefill] = useState({ to: "", amt: "" });
   const [treasuryBalance, setTreasuryBalance] = useState("0.0");
   const [burnerBalances, setBurnerBalances] = useState(["0","0","0"]);
   const [transactions, setTransactions] = useState([]);
@@ -467,6 +460,11 @@ export default function Dashboard() {
   const handleConfirm = async (i) => { await confirmTx(i); fetchData(); };
   const handleExecute = async (i) => { await executeTx(i); fetchData(); };
   const handleRevoke  = async (i) => { await revokeTx(i);  fetchData(); };
+
+  const openModal = (to = "", amt = "") => {
+    setModalPrefill({ to, amt });
+    setShowModal(true);
+  };
 
   const navItems = [
     { id:"overview", label:"Overview",     Icon: Icon.overview },
@@ -502,7 +500,7 @@ export default function Dashboard() {
         </nav>
 
         <div className="sidebar__footer">
-          <button className="btn-blue btn-block" onClick={() => setShowModal(true)}>
+          <button className="btn-blue btn-block" onClick={() => openModal()}>
             <Icon.plus /> New Transaction
           </button>
 
@@ -552,7 +550,7 @@ export default function Dashboard() {
           <OverviewPage
             activeAccount={activeAccount} burners={burners}
             burnerBalances={burnerBalances} treasuryBalance={treasuryBalance}
-            onFetch={fetchData} onOpenNew={() => setShowModal(true)} multiSig={multiSig}
+            onFetch={fetchData} onOpenNew={() => openModal()} onReview={(to, amt) => openModal(to, amt)} multiSig={multiSig}
           />
         )}
         {page === "ledger" && (
@@ -566,7 +564,11 @@ export default function Dashboard() {
       </main>
 
       {showModal && (
-        <NewTxModal onClose={() => setShowModal(false)} multiSig={multiSig} onFetch={fetchData} />
+        <NewTxModal
+          onClose={() => { setShowModal(false); setModalPrefill({ to: "", amt: "" }); }}
+          multiSig={multiSig} onFetch={fetchData}
+          prefillTo={modalPrefill.to} prefillAmt={modalPrefill.amt}
+        />
       )}
     </div>
   );
