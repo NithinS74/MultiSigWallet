@@ -80,21 +80,33 @@ export const useMultiSig = (activeAccount) => {
       
       for (let i = 0; i < count; i++) {
         const tx = await contract.transactions(i);
-        
-        // This is where the rogue tag was! It's clean now.
         const isConfirmed = await contract.isConfirmed(i, activeAccount.address);
-        
         const confirmationsNeeded = await contract.noOfConfirmations();
+        const numConf = tx.numConfirmations.toNumber();
+
+        // ── CONTRACT BUG WORKAROUND ──────────────────────────────────
+        // submitTransaction() sets isConfirmed[txIndex][proposer] = true
+        // but does NOT increment numConfirmations. This means the proposer's
+        // mapping entry is true while numConfirmations stays at 0.
+        //
+        // revokeConfirmation() does:
+        //   require(isConfirmed[txIndex][msg.sender])  ← passes (mapping is true)
+        //   numConfirmations -= 1                      ← REVERTS: 0 - 1 underflows in ^0.8
+        //
+        // Fix: canRevoke is only true when numConfirmations > 0, meaning at least
+        // one explicit confirmTransaction() call has been made and can safely be decremented.
+        const canRevoke = isConfirmed && numConf > 0;
 
         fetchedTxs.push({
           index: i,
           to: tx.to,
-          value: tx.value, // Keep as BigNumber (Wei) for the UI to format
+          value: tx.value,       // Keep as BigNumber for UI formatting
           executed: tx.executed,
-          numConfirmations: tx.numConfirmations.toNumber(),
+          numConfirmations: numConf,
           confirmationsNeeded: confirmationsNeeded.toNumber(),
           isConfirmed: isConfirmed,
-          canExecute: tx.numConfirmations.toNumber() >= confirmationsNeeded.toNumber() && !tx.executed,
+          canRevoke: canRevoke,  // Use this in UI instead of isConfirmed for the Revoke button
+          canExecute: numConf >= confirmationsNeeded.toNumber() && !tx.executed,
           owners: burnersArray.map(b => b.address) 
         });
       }

@@ -234,13 +234,30 @@ function LedgerPage({ transactions, activeAccount, onConfirm, onExecute, onRevok
 /* ─── TxRow ─────────────────────────────────────────────────── */
 function TxRow({ tx, activeAccount, onConfirm, onExecute, onRevoke }) {
   const isOwner = tx.owners.includes(activeAccount.address);
-  const [confLoading, confSuccess, runConf] = useActionState();
-  const [execLoading, execSuccess, runExec] = useActionState();
-  const [revLoading, revSuccess, runRev]  = useActionState();
+  const [confLoading, setConfLoading] = useState(false);
+  const [execLoading, setExecLoading] = useState(false);
+  const [revLoading,  setRevLoading]  = useState(false);
 
   const short = addr => `${addr.slice(0, 8)}…${addr.slice(-6)}`;
   const pct = Math.min((tx.numConfirmations / tx.confirmationsNeeded) * 100, 100);
-  const isDeposit = tx.value && ethers.BigNumber.isBigNumber(tx.value) && tx.value.eq(0);
+
+  const handleConfirm = async () => {
+    setConfLoading(true);
+    await onConfirm(tx.index); // onConfirm already calls fetchData inside
+    setConfLoading(false);
+  };
+
+  const handleExecute = async () => {
+    setExecLoading(true);
+    await onExecute(tx.index);
+    setExecLoading(false);
+  };
+
+  const handleRevoke = async () => {
+    setRevLoading(true);
+    await onRevoke(tx.index); // fetchData runs → tx prop updates → button switches automatically
+    setRevLoading(false);
+  };
 
   return (
     <div className={`tx-row${tx.executed ? " tx-row--executed" : ""}`}>
@@ -281,22 +298,28 @@ function TxRow({ tx, activeAccount, onConfirm, onExecute, onRevoke }) {
         {!tx.executed && isOwner && (
           <div className="tx-row__actions">
             {tx.isConfirmed ? (
-              <Btn className="btn-ghost btn-sm btn-red" loading={revLoading} success={revSuccess}
-                loadingLabel="Revoking…" successLabel="Revoked"
-                onClick={() => runRev(async () => { await onRevoke(tx.index); return true; })}>
-                Revoke
-              </Btn>
+              tx.canRevoke ? (
+                // Another owner has signed — safe to revoke (numConfirmations > 0)
+                <Btn className="btn-ghost btn-sm btn-red" loading={revLoading}
+                  loadingLabel="Revoking…"
+                  onClick={handleRevoke}>
+                  Revoke
+                </Btn>
+              ) : (
+                // This is the proposer — show a static tag instead of a broken revoke button
+                <span className="badge badge--neutral proposed-tag">Proposed</span>
+              )
             ) : (
-              <Btn className="btn-blue btn-sm" loading={confLoading} success={confSuccess}
-                loadingLabel="Signing…" successLabel="Signed!"
-                onClick={() => runConf(async () => { await onConfirm(tx.index); return true; })}>
+              <Btn className="btn-blue btn-sm" loading={confLoading}
+                loadingLabel="Signing…"
+                onClick={handleConfirm}>
                 Sign Now
               </Btn>
             )}
             {tx.canExecute && (
-              <Btn className="btn-green btn-sm" loading={execLoading} success={execSuccess}
-                loadingLabel="Executing…" successLabel="Done!"
-                onClick={() => runExec(async () => { await onExecute(tx.index); return true; })}>
+              <Btn className="btn-green btn-sm" loading={execLoading}
+                loadingLabel="Executing…"
+                onClick={handleExecute}>
                 Execute
               </Btn>
             )}
